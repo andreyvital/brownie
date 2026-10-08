@@ -20,12 +20,15 @@ export class Letzplay extends Context.Service<
   Letzplay,
   {
     /** Every slot matching the filters, following pagination. */
-    readonly listSlots: (filters?: SlotFilters) => Effect.Effect<ReadonlyArray<Slot>, BrowserError>
+    readonly listSlots: (filters?: SlotFilters) => Effect.Effect<ReadonlyArray<Slot>, BrowserError | LoginError>
   }
 >()("Letzplay") {}
 
-const login = Effect.fn("login")(function* (email: string, password: Redacted.Redacted<string>) {
-  const browser = yield* Browser
+const login = Effect.fn("login")(function* (
+  browser: Browser["Service"],
+  email: string,
+  password: Redacted.Redacted<string>,
+) {
   const page = yield* browser.fetch("/login")
   // Carry over the hidden fields (authenticity_token, form_token, ...).
   const form = Object.fromEntries(
@@ -52,16 +55,25 @@ export const LetzplayLive = Layer.effect(
     const password = yield* Config.Redacted("LETZPLAY_PASSWORD")
     const browser = yield* Browser
 
-    yield* login(email, password)
+    yield* login(browser, email, password)
 
-    const fetchPage = (filters: SlotFilters, page: number) => {
+    const fetchPage = Effect.fn("fetchPage")(function* (filters: SlotFilters, page: number) {
       const params = new URLSearchParams({ page: String(page) })
       if (filters.filter) params.set("filter", filters.filter)
       if (filters.date) params.set("date", filters.date)
       if (filters.period) params.set("period", PERIODS[filters.period])
       if (filters.court) params.set("court", String(filters.court))
-      return browser.fetch(`/${club}/club?${params}`).pipe(Effect.map((res) => parseSlotPage(res.body)))
-    }
+      const path = `/${club}/club?${params}`
+
+      let res = yield* browser.fetch(path)
+      // An expired session redirects to /login; log in again and retry once.
+      if (new URL(res.url).pathname === "/login") {
+        yield* Effect.logInfo("session expired")
+        yield* login(browser, email, password)
+        res = yield* browser.fetch(path)
+      }
+      return parseSlotPage(res.body)
+    })
 
     const listSlots = Effect.fn("listSlots")(function* (filters: SlotFilters = {}) {
       const slots: Array<Slot> = []
