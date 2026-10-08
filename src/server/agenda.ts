@@ -17,7 +17,14 @@ const formatDate = (date: string) =>
     timeZone: "UTC",
   })
 
-const renderSlot = (slot: Slot) => {
+// "updated 14:32 (3 min ago)" in the club's timezone.
+const formatFetchedAt = (fetchedAt: Date, timeZone: string) => {
+  const time = fetchedAt.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone })
+  const minutes = Math.floor((Date.now() - fetchedAt.getTime()) / 60_000)
+  return `updated ${time} (${minutes < 1 ? "just now" : `${minutes} min ago`})`
+}
+
+const renderSlot =(slot: Slot) => {
   const who =
     slot.scheduleId !== undefined
       ? `<span class="free">Free</span>`
@@ -30,8 +37,15 @@ const renderSlot = (slot: Slot) => {
 </li>`
 }
 
-export const renderAgenda = (opts: { club: string; date: string; today: string; slots: ReadonlyArray<Slot> }) => {
-  const { club, date, today, slots } = opts
+export const renderAgenda = (opts: {
+  club: string
+  date: string
+  today: string
+  slots: ReadonlyArray<Slot>
+  fetchedAt: Date
+  timeZone: string
+}) => {
+  const { club, date, today, slots, fetchedAt, timeZone } = opts
   const sorted = [...slots]
     .filter((s) => s.date === date)
     .sort((a, b) => a.start.localeCompare(b.start) || a.court.localeCompare(b.court))
@@ -74,6 +88,7 @@ export const renderAgenda = (opts: { club: string; date: string; today: string; 
   .free { color: var(--free); background: var(--free-bg); padding: 1px 8px; border-radius: 999px; font-size: 13px; font-weight: 600; }
   .muted, .empty { color: var(--muted); }
   .empty { padding: 32px 16px; text-align: center; }
+  .updated { color: var(--muted); font-size: 13px; margin: 12px 0 0; text-align: center; }
 </style>
 </head>
 <body>
@@ -84,6 +99,7 @@ export const renderAgenda = (opts: { club: string; date: string; today: string; 
   </header>
   <p class="summary">${escape(club)} · ${sorted.length} slots, ${free} free${date === today ? "" : ` · <a href="/">today</a>`}</p>
   ${sorted.length > 0 ? `<ul>${sorted.map(renderSlot).join("")}</ul>` : `<ul><li class="empty">No slots listed for this day.</li></ul>`}
+  <p class="updated">Data from letzplay.me, ${formatFetchedAt(fetchedAt, timeZone)}</p>
 </main>
 </body>
 </html>`

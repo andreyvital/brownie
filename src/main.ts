@@ -25,11 +25,15 @@ const Routes = Layer.effectDiscard(
     const timeZone = yield* Config.String("CLUB_TIMEZONE").pipe(Config.withDefault("America/Sao_Paulo"))
 
     // Each scrape takes a couple of seconds, so keep a day's agenda for a few
-    // minutes. Failures aren't cached.
-    const agenda = yield* Cache.makeWith((date: string) => letzplay.listSlots({ date }), {
-      capacity: 32,
-      timeToLive: (exit) => (Exit.isSuccess(exit) ? Duration.minutes(5) : Duration.zero),
-    })
+    // minutes. Failures aren't cached. Remember when it was fetched so the page
+    // can say how fresh it is.
+    const agenda = yield* Cache.makeWith(
+      (date: string) => letzplay.listSlots({ date }).pipe(Effect.map((slots) => ({ slots, fetchedAt: new Date() }))),
+      {
+        capacity: 32,
+        timeToLive: (exit) => (Exit.isSuccess(exit) ? Duration.minutes(5) : Duration.zero),
+      },
+    )
 
     yield* router.add("GET", "/health", HttpServerResponse.text("ok"))
 
@@ -76,8 +80,8 @@ const Routes = Layer.effectDiscard(
         const param = new URL(request.url, "http://localhost").searchParams.get("date")
         const date = param && DATE_RE.test(param) ? param : today
 
-        const slots = yield* Cache.get(agenda, date)
-        return HttpServerResponse.html(renderAgenda({ club, date, today, slots }))
+        const { slots, fetchedAt } = yield* Cache.get(agenda, date)
+        return HttpServerResponse.html(renderAgenda({ club, date, today, slots, fetchedAt, timeZone }))
       }).pipe(
         Effect.catch((error) =>
           Effect.logError("failed to load agenda", error).pipe(
