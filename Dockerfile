@@ -12,5 +12,7 @@ RUN bun install --frozen-lockfile --production
 COPY . .
 
 ENV NODE_ENV=production
+# WhatsApp session, on the Railway volume mounted at /data (see justfile)
+ENV WHATSAPP_AUTH_DIR=/data/whatsapp-auth
 # The encrypted .env ships with the image; DOTENV_PRIVATE_KEY decrypts it at runtime.
 CMD ["bun", "start"]

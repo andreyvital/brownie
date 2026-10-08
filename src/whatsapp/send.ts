@@ -7,7 +7,8 @@
 import makeWASocket, { DisconnectReason, useMultiFileAuthState, type WASocket } from "@whiskeysockets/baileys"
 import pino from "pino"
 
-const AUTH_DIR = ".whatsapp-auth"
+// On Railway this is on the volume (see Dockerfile and justfile)
+const AUTH_DIR = process.env.WHATSAPP_AUTH_DIR || ".whatsapp-auth"
 
 // libsignal (used by Baileys) dumps whole sessions, keys included, with console.info
 console.info = () => {}

@@ -64,3 +64,15 @@ copy `.env.keys` over or set `DOTENV_PRIVATE_KEY`. Change a value with
 `bunx dotenvx set LETZPLAY_PASSWORD <new>`.
 
 Starting fresh: `cp .env.example .env`, fill it in, then `bunx dotenvx encrypt`.
+
+## WhatsApp
+
+`bun run whatsapp "message"` sends a message to `WHATSAPP_TO` from a second WhatsApp account,
+linked as a device with [Baileys](https://github.com/WhiskeySockets/Baileys). The first run
+prints a pairing code for the account in `WHATSAPP_PHONE`; the session is then kept in
+`.whatsapp-auth/` (gitignored). WhatsApp unlinks it if that account's phone is inactive for 14 days.
+
+On Railway the session lives on a volume mounted at `/data` (`WHATSAPP_AUTH_DIR` in the
+`Dockerfile`). `just whatsapp-volume` creates it once and `just whatsapp-push` copies the local
+session there. Don't keep sending from both places afterwards: a session used in two places
+breaks.
