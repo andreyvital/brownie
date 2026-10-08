@@ -46,8 +46,9 @@ it works in every major browser without a relay. Its decoder files are served fr
 `node_modules/ezuikit-js` under `/ezuikit/`.
 
 The player needs an EZVIZ Open Platform access token. `src/ezviz/Ezviz.ts` gets one from
-`EZVIZ_APP_KEY` / `EZVIZ_APP_SECRET` (an app created at https://open.ezvizlife.com with the
-account that owns the camera) and caches it until an hour before it expires. The token is
+`EZVIZ_APP_KEY` / `EZVIZ_APP_SECRET` (an app created in the developer console for the
+account's region, https://isaopen.ezviz.com/console/home.html for South America, signed in
+with the account that owns the camera) and caches it until an hour before it expires. The token is
 handed to the browser, so anyone who can open `/live` can watch that account's cameras until
 it expires. Without the keys, `/live` returns 503 and the rest of the app runs as usual.
 
