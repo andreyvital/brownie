@@ -13,7 +13,6 @@
     "@dotenvx/dotenvx": "^2.33.0",
     "@effect/platform-bun": "4.0.2",
     "effect": "4.0.2",
-    "ezuikit-js": "9.0.23",
     "node-html-parser": "^9.0.4",
     "playwright": "1.64.0"
   },
