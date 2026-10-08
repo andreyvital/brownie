@@ -1,12 +1,13 @@
-FROM oven/bun:1.3.1
+# Official Playwright image: browsers and their system deps preinstalled under
+# /ms-playwright. Its version must match the playwright package in bun.lock.
+FROM mcr.microsoft.com/playwright:v1.64.0-noble
+
+COPY --from=oven/bun:1.3.1 /usr/local/bin/bun /usr/local/bin/bun
 
 WORKDIR /app
 
 COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile --production
-
-# Chromium plus the system libraries and fonts it needs.
-RUN bunx playwright install --with-deps chromium
 
 COPY . .
 

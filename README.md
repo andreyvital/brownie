@@ -1,13 +1,28 @@
 # brownie
 
-Lists court slots on [letzplay.me](https://letzplay.me/clavatenis/club). Built with Bun, Effect 4 and Playwright.
+A small web page showing today's court agenda from
+[letzplay.me](https://letzplay.me/clavatenis/club). Built with Bun, Effect 4 and Playwright.
 
 ```bash
 bun install
 bunx playwright install chromium
-bun start                          # free slots (HEADLESS=false to watch the browser)
-bun start all 2026-10-09           # every slot on a date
-bun start me                       # your reservations
+bun start                          # http://localhost:3000 (HEADLESS=false to watch the browser)
+```
+
+- `GET /` shows today's agenda (in `CLUB_TIMEZONE`, default `America/Sao_Paulo`).
+  `?date=YYYY-MM-DD` shows another day. Results are cached for 5 minutes.
+- `GET /health` is for the platform health check. The server only starts listening once
+  the browser has cleared Cloudflare and logged in.
+
+## Deploying
+
+The app runs on Railway (project `brownie`, https://brownie-production.up.railway.app) from the
+`Dockerfile`, which is based on the official Playwright image. The `mcr.microsoft.com/playwright`
+tag must match the `playwright` version in `bun.lock`. The only variable the service needs is
+`DOTENV_PRIVATE_KEY`.
+
+```bash
+railway up --service brownie
 ```
 
 ## How it works
