@@ -1,0 +1,3 @@
+- Avoid terminating comments with a period
+- Don't add Claude session links (e.g. `https://claude.ai/code/session_...`) to commit messages
+- Keep commit messages short: a single subject line of at most 98 characters

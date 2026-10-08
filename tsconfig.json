@@ -10,9 +10,11 @@
 
     // Bundler mode
     "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
     "noEmit": true,
+    "paths": {
+      "~/*": ["./src/*"]
+    },
 
     // Best practices
     "strict": true,

@@ -1,7 +1,7 @@
 import { Config, Context, Data, Effect, Layer, Redacted } from "effect"
 import { parse } from "node-html-parser"
-import { Browser, BrowserLive, type BrowserError } from "./Browser.ts"
-import { parseSlotPage, type Slot } from "./parse.ts"
+import { Browser, BrowserLive, type BrowserError } from "~/letzplay/Browser"
+import { parseSlotPage, type Slot } from "~/letzplay/parse"
 
 export class LoginError extends Data.TaggedError("LoginError")<{
   readonly message: string

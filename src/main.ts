@@ -1,6 +1,6 @@
 import { BunRuntime } from "@effect/platform-bun"
 import { Console, Effect } from "effect"
-import { Letzplay, LetzplayLive, type SlotFilters } from "./Letzplay.ts"
+import { Letzplay, LetzplayLive, type SlotFilters } from "~/letzplay/Letzplay"
 
 // Usage: bun start [available|me|all] [YYYY-MM-DD]
 const [filter = "available", date] = process.argv.slice(2)
