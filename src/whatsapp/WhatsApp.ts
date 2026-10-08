@@ -22,6 +22,8 @@ export class WhatsApp extends Context.Service<
   {
     /** Where the connection stands. Starts linking when there's no session yet */
     readonly status: Effect.Effect<Status>
+    /** Where the connection stands, without starting anything */
+    readonly currentStatus: Effect.Effect<Status>
     readonly send: (phone: string, text: string) => Effect.Effect<void, WhatsAppError>
   }
 >()("WhatsApp") {}
@@ -120,6 +122,7 @@ export const WhatsAppLive = Layer.effect(
         if (status.state === "unlinked") void connect()
         return status
       }),
+      currentStatus: Effect.sync(() => status),
       send,
     })
   }),

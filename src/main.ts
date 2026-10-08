@@ -19,6 +19,7 @@ const Routes = Layer.effectDiscard(
     const router = yield* HttpRouter.HttpRouter
     const letzplay = yield* Letzplay
     const ezviz = yield* Ezviz
+    const whatsapp = yield* WhatsApp
     const club = yield* Config.String("LETZPLAY_CLUB").pipe(Config.withDefault("clavatenis"))
     const timeZone = yield* Config.String("CLUB_TIMEZONE").pipe(Config.withDefault("America/Sao_Paulo"))
 
@@ -34,6 +35,17 @@ const Routes = Layer.effectDiscard(
     )
 
     yield* router.add("GET", "/health", HttpServerResponse.text("ok"))
+
+    // Public, so only the connection state: no pairing code, and it never starts linking
+    yield* router.add(
+      "GET",
+      "/status",
+      whatsapp.currentStatus.pipe(
+        Effect.map((status) =>
+          HttpServerResponse.jsonUnsafe({ uptime: Math.floor(process.uptime()), whatsAppStatus: status.state }),
+        ),
+      ),
+    )
 
     yield* router.add(
       "GET",

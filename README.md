@@ -15,6 +15,8 @@ bun start                          # http://localhost:3000 (HEADLESS=false to wa
   (see [Court camera](#court-camera)). `GET /live.jpg` is the picture itself.
 - `GET /send` sends a WhatsApp message to one of `WHATSAPP_CONTACTS` (see [WhatsApp](#whatsapp)),
   behind HTTP basic auth with `SEND_PASSWORD` (any user name).
+- `GET /status` returns `{ uptime, whatsAppStatus }` (seconds since start, and `open`, `connecting`,
+  `pairing`, `unlinked` or `replaced`).
 - `GET /health` is for the platform health check. The server only starts listening once
   the browser has cleared Cloudflare and logged in.
 
