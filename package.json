@@ -1,0 +1,23 @@
+{
+  "name": "brownie",
+  "module": "src/main.ts",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@dotenvx/dotenvx": "^2.33.0",
+    "@effect/platform-bun": "4.0.2",
+    "effect": "4.0.2",
+    "node-html-parser": "^9.0.4",
+    "playwright": "1.64.0"
+  },
+  "scripts": {
+    "start": "dotenvx run -q -- bun src/main.ts",
+    "typecheck": "tsc --noEmit"
+  }
+}
