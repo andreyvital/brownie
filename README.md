@@ -13,6 +13,8 @@ bun start                          # http://localhost:3000 (HEADLESS=false to wa
   `?date=YYYY-MM-DD` shows another day. Results are cached for 5 minutes.
 - `GET /live` shows a picture from the court camera that refreshes every 30 seconds
   (see [Court camera](#court-camera)). `GET /live.jpg` is the picture itself.
+- `GET /send` sends a WhatsApp message to one of `WHATSAPP_CONTACTS` (see [WhatsApp](#whatsapp)),
+  behind HTTP basic auth with `SEND_PASSWORD` (any user name).
 - `GET /health` is for the platform health check. The server only starts listening once
   the browser has cleared Cloudflare and logged in.
 
@@ -74,5 +76,6 @@ prints a pairing code for the account in `WHATSAPP_PHONE`; the session is then k
 
 On Railway the session lives on a volume mounted at `/data` (`WHATSAPP_AUTH_DIR` in the
 `Dockerfile`). `just whatsapp-volume` creates it once and `just whatsapp-push` copies the local
-session there. Don't keep sending from both places afterwards: a session used in two places
+session there. The server keeps one connection open for `/send`; if it isn't linked yet the page
+shows a pairing code. Don't keep sending from both places afterwards: a session used in two places
 breaks.

@@ -3,17 +3,9 @@
 //   bun run whatsapp "hello"
 //
 // The first run links the bot account: WHATSAPP_PHONE must be its number, and the script
-// prints a pairing code to enter on that phone. The session is then kept in .whatsapp-auth/
-import makeWASocket, { DisconnectReason, useMultiFileAuthState, type WASocket } from "@whiskeysockets/baileys"
-import pino from "pino"
-
-// On Railway this is on the volume (see Dockerfile and justfile)
-const AUTH_DIR = process.env.WHATSAPP_AUTH_DIR || ".whatsapp-auth"
-
-// libsignal (used by Baileys) dumps whole sessions, keys included, with console.info
-console.info = () => {}
-
-const digits = (value: string | undefined) => value?.replace(/\D/g, "") ?? ""
+// prints a pairing code to enter on that phone. The session is then kept in AUTH_DIR
+import { DisconnectReason, useMultiFileAuthState, type WASocket } from "@whiskeysockets/baileys"
+import { AUTH_DIR, digits, disconnectStatus, formatPairingCode, makeSocket } from "~/whatsapp/socket"
 
 const text = process.argv.slice(2).join(" ").trim()
 const to = digits(process.env.WHATSAPP_TO)
@@ -30,11 +22,7 @@ const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR)
 // with "restart required", so in that case connect again with the new credentials
 const connect = (): Promise<WASocket> =>
   new Promise((resolve, reject) => {
-    const sock = makeWASocket({
-      auth: state,
-      logger: pino({ level: "silent" }),
-      markOnlineOnConnect: false,
-    })
+    const sock = makeSocket(state)
     sock.ev.on("creds.update", saveCreds)
 
     let pairingRequested = false
@@ -44,11 +32,11 @@ const connect = (): Promise<WASocket> =>
         if (!phone) return reject(new Error("not linked yet: set WHATSAPP_PHONE to the bot account's number"))
         const code = await sock.requestPairingCode(phone)
         console.log(`On the bot's phone: Linked devices → Link a device → Link with phone number instead`)
-        console.log(`Pairing code: ${code.match(/.{1,4}/g)?.join("-")}`)
+        console.log(`Pairing code: ${formatPairingCode(code)}`)
       }
       if (connection === "open") resolve(sock)
       if (connection === "close") {
-        const status = (lastDisconnect?.error as { output?: { statusCode?: number } } | undefined)?.output?.statusCode
+        const status = disconnectStatus(lastDisconnect?.error)
         if (status === DisconnectReason.restartRequired) return resolve(connect())
         if (status === DisconnectReason.loggedOut) {
           return reject(new Error(`logged out: delete ${AUTH_DIR}/ and link again`))

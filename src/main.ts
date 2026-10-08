@@ -1,10 +1,13 @@
 import { BunHttpServer, BunRuntime } from "@effect/platform-bun"
-import { Cache, Config, Duration, Effect, Exit, Layer } from "effect"
-import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http"
+import { Cache, Config, Duration, Effect, Exit, Layer, Option, Redacted } from "effect"
+import { Headers, HttpRouter, HttpServerRequest, HttpServerResponse, UrlParams } from "effect/http"
+import { timingSafeEqual } from "node:crypto"
 import { Ezviz, EzvizLive } from "~/ezviz/Ezviz"
 import { Letzplay, LetzplayLive } from "~/letzplay/Letzplay"
 import { renderAgenda } from "~/server/agenda"
 import { renderLive } from "~/server/live"
+import { type Contact, renderSend } from "~/server/send"
+import { WhatsApp, WhatsAppLive } from "~/whatsapp/WhatsApp"
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 
@@ -82,12 +85,96 @@ const Routes = Layer.effectDiscard(
   }),
 )
 
+// "Andrey=5581995698652,Steffany=5532998242044"
+const parseContacts = (value: string): ReadonlyArray<Contact> =>
+  value.split(",").flatMap((entry) => {
+    const [name, phone] = entry.split("=").map((s) => s.trim())
+    return name && phone ? [{ name, phone: phone.replace(/\D/g, "") }] : []
+  })
+
+const sha256 = (s: string) => new Bun.CryptoHasher("sha256").update(s).digest()
+
+// /send can message real people from our account, so it sits behind HTTP basic auth
+// (any user name, SEND_PASSWORD as the password)
+const isAuthorized = (request: HttpServerRequest.HttpServerRequest, password: Redacted.Redacted<string>) => {
+  const header = Option.getOrElse(Headers.get(request.headers, "authorization"), () => "")
+  if (!header.startsWith("Basic ")) return false
+  const decoded = Buffer.from(header.slice(6), "base64").toString()
+  const given = decoded.slice(decoded.indexOf(":") + 1)
+  return timingSafeEqual(sha256(given), sha256(Redacted.value(password)))
+}
+
+const SendRoutes = Layer.effectDiscard(
+  Effect.gen(function* () {
+    const router = yield* HttpRouter.HttpRouter
+    const whatsapp = yield* WhatsApp
+    const contacts = parseContacts(yield* Config.String("WHATSAPP_CONTACTS").pipe(Config.withDefault("")))
+    const password = yield* Config.option(Config.Redacted("SEND_PASSWORD"))
+
+    const guarded = (
+      handler: (request: HttpServerRequest.HttpServerRequest) => Effect.Effect<HttpServerResponse.HttpServerResponse>,
+    ) =>
+      Effect.gen(function* () {
+        const request = yield* HttpServerRequest.HttpServerRequest
+        if (Option.isNone(password) || contacts.length === 0) {
+          return HttpServerResponse.text("Sending isn't set up (SEND_PASSWORD, WHATSAPP_CONTACTS).", { status: 503 })
+        }
+        if (!isAuthorized(request, password.value)) {
+          return HttpServerResponse.text("Unauthorized", {
+            status: 401,
+            headers: { "www-authenticate": 'Basic realm="brownie"' },
+          })
+        }
+        return yield* handler(request)
+      })
+
+    yield* router.add(
+      "GET",
+      "/send",
+      guarded(() => whatsapp.status.pipe(Effect.map((status) => HttpServerResponse.html(renderSend({ contacts, status }))))),
+    )
+
+    yield* router.add(
+      "POST",
+      "/send",
+      guarded((request) =>
+        Effect.gen(function* () {
+          const params = yield* request.urlParamsBody.pipe(Effect.orElseSucceed(() => UrlParams.empty))
+          const to = Option.getOrElse(UrlParams.getFirst(params, "to"), () => "")
+          const text = Option.getOrElse(UrlParams.getFirst(params, "text"), () => "").trim()
+          const contact = contacts.find((c) => c.name === to)
+
+          const result = !contact
+            ? { ok: false, message: "Pick who to send it to" }
+            : !text
+              ? { ok: false, message: "Write a message first" }
+              : yield* whatsapp.send(contact.phone, text).pipe(
+                  Effect.as({ ok: true, message: `Sent to ${contact.name}` }),
+                  Effect.catch((error) =>
+                    Effect.logError("failed to send a WhatsApp message", error).pipe(
+                      Effect.as({ ok: false, message: `Couldn't send: ${error.message}` }),
+                    ),
+                  ),
+                )
+
+          const status = yield* whatsapp.status
+          // Keep the text after a failure so it can be sent again
+          return HttpServerResponse.html(renderSend({ contacts, status, result, to, text: result.ok ? "" : text })).pipe(
+            HttpServerResponse.setStatus(result.ok ? 200 : 400),
+          )
+        }),
+      ),
+    )
+  }),
+)
+
 // Railway (and most hosts) pass the port to listen on via PORT.
 const port = Number(process.env.PORT ?? 3000)
 
-HttpRouter.serve(Routes).pipe(
+HttpRouter.serve(Layer.mergeAll(Routes, SendRoutes)).pipe(
   Layer.provide(LetzplayLive),
   Layer.provide(EzvizLive),
+  Layer.provide(WhatsAppLive),
   Layer.provide(BunHttpServer.layer({ port })),
   Layer.launch,
   BunRuntime.runMain,
