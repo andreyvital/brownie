@@ -9,6 +9,9 @@ import pino from "pino"
 
 const AUTH_DIR = ".whatsapp-auth"
 
+// libsignal (used by Baileys) dumps whole sessions, keys included, with console.info
+console.info = () => {}
+
 const digits = (value: string | undefined) => value?.replace(/\D/g, "") ?? ""
 
 const text = process.argv.slice(2).join(" ").trim()
