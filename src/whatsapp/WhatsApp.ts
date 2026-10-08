@@ -31,6 +31,12 @@ export class WhatsApp extends Context.Service<
 // When a connection drops, wait this long before connecting again
 const RECONNECT_MS = 5_000
 
+// When another connection takes the session over, try to take it back this many times, this far
+// apart. During a deploy that's usually the old deployment, which is gone within a minute; a
+// device that keeps the session (e.g. the CLI script on the Mac) wins after that
+const TAKEOVER_RETRIES = 4
+const TAKEOVER_RETRY_MS = 30_000
+
 export const WhatsAppLive = Layer.effect(
   WhatsApp,
   Effect.gen(function* () {
@@ -40,6 +46,7 @@ export const WhatsAppLive = Layer.effect(
     let status: Status = { state: "unlinked" }
     let sock: WASocket | undefined
     let stopped = false
+    let takeovers = 0
     const log = (message: string) => Effect.runFork(Effect.logInfo(message))
 
     const connect = async () => {
@@ -63,16 +70,26 @@ export const WhatsAppLive = Layer.effect(
         }
         if (connection === "open") {
           status = { state: "open" }
+          // Held the session for a while: a later takeover starts the count again
+          setTimeout(() => {
+            if (sock === socket) takeovers = 0
+          }, TAKEOVER_RETRIES * TAKEOVER_RETRY_MS)
           log(`WhatsApp connected as ${socket.user?.id}`)
         }
         if (connection !== "close" || stopped) return
 
         sock = undefined
         const reason = disconnectStatus(lastDisconnect?.error)
+        log(`WhatsApp connection closed (${reason ?? lastDisconnect?.error?.message ?? "no reason"})`)
         if (reason === DisconnectReason.restartRequired) return void connect()
         if (reason === DisconnectReason.connectionReplaced) {
           status = { state: "replaced" }
-          return log("WhatsApp session was taken over by another device, not reconnecting")
+          if (++takeovers > TAKEOVER_RETRIES) {
+            return log("WhatsApp session keeps being taken over by another device, giving up")
+          }
+          log(`WhatsApp session was taken over by another device, retrying in ${TAKEOVER_RETRY_MS / 1000}s`)
+          setTimeout(() => void (stopped || connect()), TAKEOVER_RETRY_MS)
+          return
         }
         if (reason === DisconnectReason.loggedOut) {
           // The session is useless now; drop it so the next visit can link again
@@ -82,7 +99,7 @@ export const WhatsAppLive = Layer.effect(
         }
         if (state.creds.registered) {
           status = { state: "connecting" }
-          setTimeout(() => void connect(), RECONNECT_MS)
+          setTimeout(() => void (stopped || connect()), RECONNECT_MS)
           return
         }
         // Pairing code expired. Don't keep asking for new ones (each one notifies the

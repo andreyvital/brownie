@@ -1,5 +1,5 @@
 import { BunHttpServer, BunRuntime } from "@effect/platform-bun"
-import { Cache, Config, Duration, Effect, Exit, Layer, Option, Redacted } from "effect"
+import { Cache, Cause, Config, Duration, Effect, Exit, Layer, Option, Redacted, Runtime } from "effect"
 import { Headers, HttpRouter, HttpServerRequest, HttpServerResponse, UrlParams } from "effect/http"
 import { timingSafeEqual } from "node:crypto"
 import { Ezviz, EzvizLive } from "~/ezviz/Ezviz"
@@ -189,5 +189,10 @@ HttpRouter.serve(Layer.mergeAll(Routes, SendRoutes)).pipe(
   Layer.provide(WhatsAppLive),
   Layer.provide(BunHttpServer.layer({ port })),
   Layer.launch,
-  BunRuntime.runMain,
+  // Railway stops the old deployment with a signal on every deploy. Exit 0 for that rather
+  // than the default 130, which Railway reports as a crash
+  BunRuntime.runMain({
+    teardown: (exit, onExit) =>
+      Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause) ? onExit(0) : Runtime.defaultTeardown(exit, onExit),
+  }),
 )

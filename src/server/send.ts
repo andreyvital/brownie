@@ -17,7 +17,7 @@ const renderStatus = (status: Status) => {
     case "unlinked":
       return `<p class="status bad">WhatsApp isn't linked, and WHATSAPP_PHONE isn't set to link it</p>`
     case "replaced":
-      return `<p class="status bad">Another device took over this WhatsApp session. Redeploy to reconnect</p>`
+      return `<p class="status bad">Another device took over this WhatsApp session. Retrying for a couple of minutes; after that, redeploy</p>`
     case "pairing":
       return `<div class="status pairing">
   <p>Link the bot account: on its phone go to Linked devices → Link a device →
