@@ -12,12 +12,15 @@
   "dependencies": {
     "@dotenvx/dotenvx": "^2.33.0",
     "@effect/platform-bun": "4.0.2",
+    "@whiskeysockets/baileys": "^7.0.0-rc14",
     "effect": "4.0.2",
     "node-html-parser": "^9.0.4",
+    "pino": "^10.4.0",
     "playwright": "1.64.0"
   },
   "scripts": {
     "start": "dotenvx run -q -- bun src/main.ts",
+    "whatsapp": "dotenvx run -q -- bun src/whatsapp/send.ts",
     "typecheck": "tsc --noEmit"
   }
 }

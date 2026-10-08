@@ -33,3 +33,6 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 
 # Finder (MacOS) folder config
 .DS_Store
+
+# WhatsApp session of the bot account (src/whatsapp/send.ts)
+.whatsapp-auth
