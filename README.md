@@ -11,6 +11,7 @@ bun start                          # http://localhost:3000 (HEADLESS=false to wa
 
 - `GET /` shows today's agenda (in `CLUB_TIMEZONE`, default `America/Sao_Paulo`).
   `?date=YYYY-MM-DD` shows another day. Results are cached for 5 minutes.
+- `GET /live` plays the court camera live (see [Live camera](#live-camera)).
 - `GET /health` is for the platform health check. The server only starts listening once
   the browser has cleared Cloudflare and logged in.
 
@@ -36,6 +37,19 @@ to the browser's TLS fingerprint, so it can't be replayed from Bun's `fetch`. So
 2. All further HTTP calls (login form post, schedule pages) are plain `fetch` calls that
    run *inside* that page (`page.evaluate`). There's no clicking or DOM automation.
 3. `src/letzplay/parse.ts` parses the server-rendered HTML into `Slot`s.
+
+## Live camera
+
+`/live` embeds EZVIZ's own web player, [`ezuikit-js`](https://www.npmjs.com/package/ezuikit-js). It
+plays the camera's `ezopen://` stream through EZVIZ's cloud and decodes H.265 in WebAssembly, so
+it works in every major browser without a relay. Its decoder files are served from
+`node_modules/ezuikit-js` under `/ezuikit/`.
+
+The player needs an EZVIZ Open Platform access token. `src/ezviz/Ezviz.ts` gets one from
+`EZVIZ_APP_KEY` / `EZVIZ_APP_SECRET` (an app created at https://open.ezvizlife.com with the
+account that owns the camera) and caches it until an hour before it expires. The token is
+handed to the browser, so anyone who can open `/live` can watch that account's cameras until
+it expires. Without the keys, `/live` returns 503 and the rest of the app runs as usual.
 
 ## Credentials
 
